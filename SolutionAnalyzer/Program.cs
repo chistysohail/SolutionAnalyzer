@@ -40,10 +40,14 @@ namespace SolutionAnalyzer
                 writer.WriteLine("Project Path,Project File Name,Project Type,Referenced Projects");
                 foreach (var project in libraryProjects.Concat(exeProjects))
                 {
-                    var referencedProjects = project.GetItems("ProjectReference");
-                    string references = String.Join(", ", referencedProjects.Select(r => r.EvaluatedInclude));
                     string projectName = Path.GetFileName(project.FullPath);
-                    writer.WriteLine($"\"{project.FullPath}\",\"{projectName}\",\"{(project.GetPropertyValue("OutputType") == "Library" ? "Library" : "Executable")}\",\"{references}\"");
+                    writer.WriteLine($"\"{project.FullPath}\",\"{projectName}\",\"{(project.GetPropertyValue("OutputType") == "Library" ? "Library" : "Executable")}\",");
+                    // Get referenced projects
+                    var referencedProjects = project.GetItems("ProjectReference");
+                    foreach (var refProject in referencedProjects)
+                    {
+                        writer.WriteLine($",,\"Referenced:\",{refProject.EvaluatedInclude}");
+                    }
                 }
 
                 // Summary at the end of the CSV
