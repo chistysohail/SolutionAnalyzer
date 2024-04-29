@@ -42,10 +42,18 @@ namespace SolutionAnalyzer
                 {
                     writer.WriteLine($"\"{project.FullPath}\",Library");
                 }
+
                 foreach (var project in exeProjects)
                 {
                     writer.WriteLine($"\"{project.FullPath}\",Executable");
+                    // Get referenced projects
+                    var referencedProjects = project.GetItems("ProjectReference");
+                    foreach (var refProject in referencedProjects)
+                    {
+                        writer.WriteLine($",Referenced Project,\"{refProject.EvaluatedInclude}\"");
+                    }
                 }
+
                 // Summary at the end of the CSV
                 writer.WriteLine("\nSummary,");
                 writer.WriteLine($"Total Projects:,{projectFiles.Count}");
