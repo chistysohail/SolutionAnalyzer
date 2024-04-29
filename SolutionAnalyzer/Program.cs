@@ -37,21 +37,13 @@ namespace SolutionAnalyzer
 
             using (StreamWriter writer = new StreamWriter(resultFilePath))
             {
-                writer.WriteLine("Project Path,Project Type");
-                foreach (var project in libraryProjects)
+                writer.WriteLine("Project Path,Project File Name,Project Type,Referenced Projects");
+                foreach (var project in libraryProjects.Concat(exeProjects))
                 {
-                    writer.WriteLine($"\"{project.FullPath}\",Library");
-                }
-
-                foreach (var project in exeProjects)
-                {
-                    writer.WriteLine($"\"{project.FullPath}\",Executable");
-                    // Get referenced projects
                     var referencedProjects = project.GetItems("ProjectReference");
-                    foreach (var refProject in referencedProjects)
-                    {
-                        writer.WriteLine($",Referenced Project,\"{refProject.EvaluatedInclude}\"");
-                    }
+                    string references = String.Join(", ", referencedProjects.Select(r => r.EvaluatedInclude));
+                    string projectName = Path.GetFileName(project.FullPath);
+                    writer.WriteLine($"\"{project.FullPath}\",\"{projectName}\",\"{(project.GetPropertyValue("OutputType") == "Library" ? "Library" : "Executable")}\",\"{references}\"");
                 }
 
                 // Summary at the end of the CSV
@@ -70,7 +62,9 @@ namespace SolutionAnalyzer
         static List<string> FindProjectFiles(string directoryPath)
         {
             // Recursively gets all files ending with .csproj in the directory
-            return Directory.GetFiles(directoryPath, "*.csproj", SearchOption.AllDirectories).ToList();
+            var allProjectFiles = Directory.GetFiles(directoryPath, "*.csproj", SearchOption.AllDirectories);
+            // Filter out any files or paths containing the word "Test"
+            return allProjectFiles.Where(file => !file.Contains("Test", StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
         static List<Project> LoadProjects(IEnumerable<string> projectFiles)
