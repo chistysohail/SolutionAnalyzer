@@ -83,4 +83,10 @@ namespace SolutionAnalyzer
             return allProjectFiles.Where(file => !file.Contains("Test", StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
-        static List<Project> LoadProjects(IEnumerable<string> projectFil
+        static List<Project> LoadProjects(IEnumerable<string> projectFiles)
+        {
+            ProjectCollection projectCollection = new ProjectCollection();
+            return projectFiles.Select(file => new Project(file, null, null, projectCollection, ProjectLoadSettings.IgnoreMissingImports)).ToList();
+        }
+    }
+}
