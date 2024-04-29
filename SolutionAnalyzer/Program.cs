@@ -3,7 +3,6 @@ using Microsoft.Build.Evaluation;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 
 namespace SolutionAnalyzer
 {
@@ -35,43 +34,33 @@ namespace SolutionAnalyzer
 
             string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
             string csvResultFilePath = Path.Combine(folderPath, $"ProjectList_{timestamp}.csv");
-            string jsonResultFilePath = Path.Combine(folderPath, $"ProjectList_{timestamp}.json");
-
-            // Prepare JSON output
-            var jsonProjects = new List<object>();
 
             using (StreamWriter csvWriter = new StreamWriter(csvResultFilePath))
             {
-                csvWriter.WriteLine("Project Path,Project File Name,Project Type");
+                csvWriter.WriteLine("Project Path,Project File Name,Project Type,Referenced Project Path,Referenced Project File Name");
                 foreach (var project in libraryProjects.Concat(exeProjects))
                 {
                     string projectName = Path.GetFileName(project.FullPath);
-                    csvWriter.WriteLine($"\"{project.FullPath}\",\"{projectName}\",\"{(project.GetPropertyValue("OutputType") == "Library" ? "Library" : "Executable")}\"");
                     // Get referenced projects
                     var referencedProjects = project.GetItems("ProjectReference");
 
-                    var jsonRefs = new List<string>();
-                    foreach (var refProject in referencedProjects)
+                    if (referencedProjects.Any())
                     {
-                        csvWriter.WriteLine($",,\"Referenced: {refProject.EvaluatedInclude}\"");
-                        jsonRefs.Add(refProject.EvaluatedInclude);
+                        foreach (var refProject in referencedProjects)
+                        {
+                            string refProjectPath = refProject.EvaluatedInclude;
+                            string refProjectName = Path.GetFileName(refProjectPath);
+                            csvWriter.WriteLine($"\"{project.FullPath}\",\"{projectName}\",\"{(project.GetPropertyValue("OutputType") == "Library" ? "Library" : "Executable")}\",\"{refProjectPath}\",\"{refProjectName}\"");
+                        }
                     }
-
-                    jsonProjects.Add(new
+                    else
                     {
-                        Path = project.FullPath,
-                        FileName = projectName,
-                        Type = project.GetPropertyValue("OutputType"),
-                        References = jsonRefs
-                    });
+                        csvWriter.WriteLine($"\"{project.FullPath}\",\"{projectName}\",\"{(project.GetPropertyValue("OutputType") == "Library" ? "Library" : "Executable")}\",,\"\"");
+                    }
                 }
             }
 
-            string jsonString = JsonSerializer.Serialize(jsonProjects, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(jsonResultFilePath, jsonString);
-
             Console.WriteLine($"CSV results saved to: {csvResultFilePath}");
-            Console.WriteLine($"JSON results saved to: {jsonResultFilePath}");
             Console.WriteLine($"Total projects processed: {projectFiles.Count}");
         }
 
