@@ -3,6 +3,7 @@ using Microsoft.Build.Evaluation;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 
 namespace SolutionAnalyzer
 {
@@ -33,34 +34,45 @@ namespace SolutionAnalyzer
             var exeProjects = projects.Where(p => p.GetPropertyValue("OutputType") == "Exe");
 
             string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-            string resultFilePath = Path.Combine(folderPath, $"ProjectList_{timestamp}.csv");
+            string csvResultFilePath = Path.Combine(folderPath, $"ProjectList_{timestamp}.csv");
+            string jsonResultFilePath = Path.Combine(folderPath, $"ProjectList_{timestamp}.json");
 
-            using (StreamWriter writer = new StreamWriter(resultFilePath))
+            // Prepare JSON output
+            var jsonProjects = new List<object>();
+
+            using (StreamWriter csvWriter = new StreamWriter(csvResultFilePath))
             {
-                writer.WriteLine("Project Path,Project File Name,Project Type");
+                csvWriter.WriteLine("Project Path,Project File Name,Project Type");
                 foreach (var project in libraryProjects.Concat(exeProjects))
                 {
                     string projectName = Path.GetFileName(project.FullPath);
-                    writer.WriteLine($"\"{project.FullPath}\",\"{projectName}\",\"{(project.GetPropertyValue("OutputType") == "Library" ? "Library" : "Executable")}\"");
+                    csvWriter.WriteLine($"\"{project.FullPath}\",\"{projectName}\",\"{(project.GetPropertyValue("OutputType") == "Library" ? "Library" : "Executable")}\"");
                     // Get referenced projects
                     var referencedProjects = project.GetItems("ProjectReference");
+
+                    var jsonRefs = new List<string>();
                     foreach (var refProject in referencedProjects)
                     {
-                        writer.WriteLine($",,\"Referenced: {refProject.EvaluatedInclude}\"");
+                        csvWriter.WriteLine($",,\"Referenced: {refProject.EvaluatedInclude}\"");
+                        jsonRefs.Add(refProject.EvaluatedInclude);
                     }
-                }
 
-                // Summary at the end of the CSV
-                writer.WriteLine("\nSummary");
-                writer.WriteLine($"Total Projects,{projectFiles.Count}");
-                writer.WriteLine($"Total Library Projects,{libraryProjects.Count()}");
-                writer.WriteLine($"Total Executable Projects,{exeProjects.Count()}");
+                    jsonProjects.Add(new
+                    {
+                        Path = project.FullPath,
+                        FileName = projectName,
+                        Type = project.GetPropertyValue("OutputType"),
+                        References = jsonRefs
+                    });
+                }
             }
 
-            Console.WriteLine($"Results saved to: {resultFilePath}");
+            string jsonString = JsonSerializer.Serialize(jsonProjects, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(jsonResultFilePath, jsonString);
+
+            Console.WriteLine($"CSV results saved to: {csvResultFilePath}");
+            Console.WriteLine($"JSON results saved to: {jsonResultFilePath}");
             Console.WriteLine($"Total projects processed: {projectFiles.Count}");
-            Console.WriteLine($"Total library projects: {libraryProjects.Count()}");
-            Console.WriteLine($"Total executable projects: {exeProjects.Count()}");
         }
 
         static List<string> FindProjectFiles(string directoryPath)
@@ -71,10 +83,4 @@ namespace SolutionAnalyzer
             return allProjectFiles.Where(file => !file.Contains("Test", StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
-        static List<Project> LoadProjects(IEnumerable<string> projectFiles)
-        {
-            ProjectCollection projectCollection = new ProjectCollection();
-            return projectFiles.Select(file => new Project(file, null, null, projectCollection, ProjectLoadSettings.IgnoreMissingImports)).ToList();
-        }
-    }
-}
+        static List<Project> LoadProjects(IEnumerable<string> projectFil
