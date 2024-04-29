@@ -37,24 +37,24 @@ namespace SolutionAnalyzer
 
             using (StreamWriter writer = new StreamWriter(resultFilePath))
             {
-                writer.WriteLine("Project Path,Project File Name,Project Type,Referenced Projects");
+                writer.WriteLine("Project Path,Project File Name,Project Type");
                 foreach (var project in libraryProjects.Concat(exeProjects))
                 {
                     string projectName = Path.GetFileName(project.FullPath);
-                    writer.WriteLine($"\"{project.FullPath}\",\"{projectName}\",\"{(project.GetPropertyValue("OutputType") == "Library" ? "Library" : "Executable")}\",");
+                    writer.WriteLine($"\"{project.FullPath}\",\"{projectName}\",\"{(project.GetPropertyValue("OutputType") == "Library" ? "Library" : "Executable")}\"");
                     // Get referenced projects
                     var referencedProjects = project.GetItems("ProjectReference");
                     foreach (var refProject in referencedProjects)
                     {
-                        writer.WriteLine($",,\"Referenced:\",{refProject.EvaluatedInclude}");
+                        writer.WriteLine($",,\"Referenced: {refProject.EvaluatedInclude}\"");
                     }
                 }
 
                 // Summary at the end of the CSV
-                writer.WriteLine("\nSummary,");
-                writer.WriteLine($"Total Projects:,{projectFiles.Count}");
-                writer.WriteLine($"Total Library Projects:,{libraryProjects.Count()}");
-                writer.WriteLine($"Total Executable Projects:,{exeProjects.Count()}");
+                writer.WriteLine("\nSummary");
+                writer.WriteLine($"Total Projects,{projectFiles.Count}");
+                writer.WriteLine($"Total Library Projects,{libraryProjects.Count()}");
+                writer.WriteLine($"Total Executable Projects,{exeProjects.Count()}");
             }
 
             Console.WriteLine($"Results saved to: {resultFilePath}");
